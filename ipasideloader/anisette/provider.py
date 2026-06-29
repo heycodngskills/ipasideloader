@@ -30,6 +30,7 @@ import logging
 from dataclasses import dataclass, field
 from typing import Optional
 
+import certifi
 import requests
 
 from ..config import DEFAULT_PUBLIC_ANISETTE_SERVERS
@@ -105,20 +106,20 @@ class AnisetteProvider:
 
     def _probe_remote(self, base_url: str) -> bool:
         try:
-            resp = requests.get(f"{base_url}/health", timeout=self.timeout)
+            resp = requests.get(f"{base_url}/health", timeout=self.timeout, verify=certifi.where())
             if resp.status_code < 500:
                 return True
         except requests.RequestException:
             pass
         # Some anisette servers don't expose /health; try the real endpoint.
         try:
-            resp = requests.get(base_url, timeout=self.timeout)
+            resp = requests.get(base_url, timeout=self.timeout, verify=certifi.where())
             return resp.status_code < 500
         except requests.RequestException:
             return False
 
     def _fetch_remote(self, base_url: str) -> AnisetteData:
-        resp = requests.get(f"{base_url}/v3/client_info", timeout=self.timeout)
+        resp = requests.get(f"{base_url}/v3/client_info", timeout=self.timeout, verify=certifi.where())
         resp.raise_for_status()
         return AnisetteData(headers=resp.json(), source=base_url)
 

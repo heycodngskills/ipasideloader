@@ -29,6 +29,7 @@ import uuid
 from dataclasses import dataclass, field
 from typing import Optional
 
+import certifi
 import requests
 import srp
 
@@ -66,6 +67,9 @@ class AppleAccountClient:
     def __init__(self, anisette: Optional[AnisetteProvider] = None):
         self.anisette = anisette or AnisetteProvider()
         self._session = requests.Session()
+        # On Windows, Python's ssl module doesn't use the OS certificate store.
+        # Explicitly set the certifi CA bundle so Apple's cert chain verifies correctly.
+        self._session.verify = certifi.where()
 
     def _anisette_headers(self) -> dict:
         data = self.anisette.get()

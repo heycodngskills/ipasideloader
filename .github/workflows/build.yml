@@ -36,6 +36,11 @@ jobs:
         with:
           python-version: "3.11"
 
+      # ── MSBuild path (Windows only, needed before zsign build) ────────────────
+      - name: Setup MSBuild (Windows)
+        if: matrix.platform == 'windows'
+        uses: microsoft/setup-msbuild@v2
+
       - name: Install Python dependencies + PyInstaller
         shell: bash
         run: |
@@ -43,40 +48,50 @@ jobs:
           pip install -r requirements.txt
           pip install pyinstaller
 
-      # ── zsign (Linux) ─────────────────────────────────────────────────────────
+      # ── zsign (Linux) — Makefile lives in build/linux/ ────────────────────────
       - name: Build zsign (Linux)
         if: matrix.platform == 'linux'
         continue-on-error: true
         shell: bash
         run: |
           sudo apt-get update -q
-          sudo apt-get install -y build-essential libssl-dev libminizip-dev zlib1g-dev
+          sudo apt-get install -y build-essential libssl-dev pkg-config zlib1g-dev
           git clone --depth 1 https://github.com/zhlynn/zsign.git /tmp/zsign
-          cd /tmp/zsign
+          cd /tmp/zsign/build/linux
           make
           mkdir -p "$GITHUB_WORKSPACE/dist_tools"
-          cp zsign "$GITHUB_WORKSPACE/dist_tools/zsign"
+          cp ../../bin/zsign "$GITHUB_WORKSPACE/dist_tools/zsign"
           chmod +x "$GITHUB_WORKSPACE/dist_tools/zsign"
 
-      # ── zsign (macOS) ─────────────────────────────────────────────────────────
+      # ── zsign (macOS) — Makefile lives in build/macos/ ───────────────────────
       - name: Build zsign (macOS)
         if: matrix.platform == 'macos'
         continue-on-error: true
         shell: bash
         run: |
-          brew install openssl@3 minizip
+          brew install openssl@3 pkg-config
+          export PKG_CONFIG_PATH="$(brew --prefix openssl@3)/lib/pkgconfig:$PKG_CONFIG_PATH"
           git clone --depth 1 https://github.com/zhlynn/zsign.git /tmp/zsign
-          cd /tmp/zsign
-          OPENSSL_PREFIX=$(brew --prefix openssl@3)
-          MINIZIP_PREFIX=$(brew --prefix minizip)
-          make \
-            CPPFLAGS="-I$OPENSSL_PREFIX/include -I$MINIZIP_PREFIX/include" \
-            LDFLAGS="-L$OPENSSL_PREFIX/lib -L$MINIZIP_PREFIX/lib"
+          cd /tmp/zsign/build/macos
+          make
           mkdir -p "$GITHUB_WORKSPACE/dist_tools"
-          cp zsign "$GITHUB_WORKSPACE/dist_tools/zsign"
+          cp ../../bin/zsign "$GITHUB_WORKSPACE/dist_tools/zsign"
           chmod +x "$GITHUB_WORKSPACE/dist_tools/zsign"
 
-      # ── ldid (Linux) ─────────────────────────────────────────────────────────
+      # ── zsign (Windows) — VS2022 solution, OpenSSL bundled in repo ────────────
+      - name: Build zsign (Windows)
+        if: matrix.platform == 'windows'
+        continue-on-error: true
+        shell: pwsh
+        run: |
+          git clone --depth 1 https://github.com/zhlynn/zsign.git C:\zsign
+          msbuild C:\zsign\build\windows\vs2022\zsign.sln `
+            /p:Configuration=Release /p:Platform=x64 /p:PlatformToolset=v143 `
+            /m /nologo
+          New-Item -ItemType Directory -Force dist_tools
+          Copy-Item C:\zsign\build\windows\vs2022\x64\Release\zsign.exe dist_tools\zsign.exe
+
+      # ── ldid (Linux) — prebuilt static binary ────────────────────────────────
       - name: Download ldid (Linux)
         if: matrix.platform == 'linux'
         continue-on-error: true
@@ -101,7 +116,7 @@ jobs:
           cp "$(which ldid)" dist_tools/ldid
           chmod +x dist_tools/ldid
 
-      # ── Ensure dist_tools dir exists ──────────────────────────────────────────
+      # ── Ensure dist_tools exists ──────────────────────────────────────────────
       - name: Ensure dist_tools exists
         shell: bash
         run: mkdir -p dist_tools
@@ -209,6 +224,7 @@ jobs:
           New-Item -ItemType Directory -Force release_pkg
           Copy-Item dist\ipasideloader.exe     release_pkg\
           Copy-Item dist\ipasideloader-gui.exe release_pkg\
+          if (Test-Path dist_tools\zsign.exe) { Copy-Item dist_tools\zsign.exe release_pkg\ }
           Copy-Item README.md release_pkg\
           Compress-Archive -Path release_pkg\* -DestinationPath "${{ matrix.asset_name }}.zip"
 

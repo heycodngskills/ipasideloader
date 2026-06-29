@@ -1,0 +1,4 @@
+requests>=2.31
+srp>=1.0.20
+pymobiledevice3>=9.0
+Anisette>=1.0.0

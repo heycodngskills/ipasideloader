@@ -1,0 +1,31 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ipasideloader"
+version = "0.1.0"
+description = "Cross-platform, open-source IPA sideloader (zsign/ldid/codesign signing, pymobiledevice3 device comms)."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+dependencies = [
+    "requests>=2.31",
+    "srp>=1.0.20",
+    "pymobiledevice3>=9.0",
+    "Anisette>=1.0.0",
+]
+
+[project.optional-dependencies]
+# Tkinter ships with the Python stdlib on most platforms, but some Linux
+# distros split it into a separate OS package (e.g. `apt install python3-tk`).
+# No pip extra is needed for it; this group is reserved for any future
+# optional GUI dependencies.
+gui = []
+
+[project.scripts]
+ipasideloader = "ipasideloader.cli:main"
+ipasideloader-gui = "ipasideloader.gui.app:main"
+
+[tool.setuptools.packages.find]
+include = ["ipasideloader*"]

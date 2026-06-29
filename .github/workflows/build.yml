@@ -36,34 +36,6 @@ jobs:
         with:
           python-version: "3.11"
 
-      # ── MSYS2 must be set up BEFORE pip so it doesn't touch Python PATH ───────
-      - name: Setup MSYS2 (Windows only)
-        if: matrix.platform == 'windows'
-        uses: msys2/setup-msys2@v2
-        with:
-          msystem: MINGW64
-          update: false
-          install: >-
-            make
-            git
-            mingw-w64-x86_64-gcc
-            mingw-w64-x86_64-openssl
-            mingw-w64-x86_64-minizip
-
-      # ── Build zsign (Windows) via MSYS2 ──────────────────────────────────────
-      - name: Build zsign (Windows)
-        if: matrix.platform == 'windows'
-        continue-on-error: true
-        shell: msys2 {0}
-        run: |
-          git clone --depth 1 https://github.com/zhlynn/zsign.git /tmp/zsign
-          cd /tmp/zsign
-          make
-          mkdir -p dist_tools
-          cp zsign.exe dist_tools/zsign.exe
-          echo "zsign built OK"
-
-      # ── Install Python deps + PyInstaller ─────────────────────────────────────
       - name: Install Python dependencies + PyInstaller
         shell: bash
         run: |
@@ -71,7 +43,7 @@ jobs:
           pip install -r requirements.txt
           pip install pyinstaller
 
-      # ── Build zsign (Linux) ───────────────────────────────────────────────────
+      # ── zsign (Linux) ─────────────────────────────────────────────────────────
       - name: Build zsign (Linux)
         if: matrix.platform == 'linux'
         continue-on-error: true
@@ -86,7 +58,7 @@ jobs:
           cp zsign "$GITHUB_WORKSPACE/dist_tools/zsign"
           chmod +x "$GITHUB_WORKSPACE/dist_tools/zsign"
 
-      # ── Build zsign (macOS) ───────────────────────────────────────────────────
+      # ── zsign (macOS) ─────────────────────────────────────────────────────────
       - name: Build zsign (macOS)
         if: matrix.platform == 'macos'
         continue-on-error: true
@@ -104,7 +76,7 @@ jobs:
           cp zsign "$GITHUB_WORKSPACE/dist_tools/zsign"
           chmod +x "$GITHUB_WORKSPACE/dist_tools/zsign"
 
-      # ── Download ldid (Linux) ─────────────────────────────────────────────────
+      # ── ldid (Linux) ─────────────────────────────────────────────────────────
       - name: Download ldid (Linux)
         if: matrix.platform == 'linux'
         continue-on-error: true
@@ -118,7 +90,7 @@ jobs:
             chmod +x dist_tools/ldid
           fi
 
-      # ── Install ldid (macOS) ──────────────────────────────────────────────────
+      # ── ldid (macOS) ─────────────────────────────────────────────────────────
       - name: Install ldid (macOS)
         if: matrix.platform == 'macos'
         continue-on-error: true
@@ -129,7 +101,7 @@ jobs:
           cp "$(which ldid)" dist_tools/ldid
           chmod +x dist_tools/ldid
 
-      # ── Ensure dist_tools exists (all platforms) ──────────────────────────────
+      # ── Ensure dist_tools dir exists ──────────────────────────────────────────
       - name: Ensure dist_tools exists
         shell: bash
         run: mkdir -p dist_tools
@@ -153,7 +125,7 @@ jobs:
             --collect-all Anisette \
             ipasideloader/cli.py
 
-      # ── PyInstaller: CLI (Windows) — PowerShell, backtick continuation ────────
+      # ── PyInstaller: CLI (Windows) ────────────────────────────────────────────
       - name: Build CLI executable (Windows)
         if: matrix.platform == 'windows'
         shell: pwsh
@@ -194,7 +166,7 @@ jobs:
             --collect-all Anisette \
             ipasideloader/gui/app.py
 
-      # ── PyInstaller: GUI (Windows) — PowerShell, backtick continuation ────────
+      # ── PyInstaller: GUI (Windows) ────────────────────────────────────────────
       - name: Build GUI executable (Windows)
         if: matrix.platform == 'windows'
         shell: pwsh
@@ -237,7 +209,6 @@ jobs:
           New-Item -ItemType Directory -Force release_pkg
           Copy-Item dist\ipasideloader.exe     release_pkg\
           Copy-Item dist\ipasideloader-gui.exe release_pkg\
-          if (Test-Path dist_tools\zsign.exe) { Copy-Item dist_tools\zsign.exe release_pkg\ }
           Copy-Item README.md release_pkg\
           Compress-Archive -Path release_pkg\* -DestinationPath "${{ matrix.asset_name }}.zip"
 

@@ -36,6 +36,34 @@ jobs:
         with:
           python-version: "3.11"
 
+      # ── MSYS2 must be set up BEFORE pip so it doesn't touch Python PATH ───────
+      - name: Setup MSYS2 (Windows only)
+        if: matrix.platform == 'windows'
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: MINGW64
+          update: false
+          install: >-
+            make
+            git
+            mingw-w64-x86_64-gcc
+            mingw-w64-x86_64-openssl
+            mingw-w64-x86_64-minizip
+
+      # ── Build zsign (Windows) via MSYS2 ──────────────────────────────────────
+      - name: Build zsign (Windows)
+        if: matrix.platform == 'windows'
+        continue-on-error: true
+        shell: msys2 {0}
+        run: |
+          git clone --depth 1 https://github.com/zhlynn/zsign.git /tmp/zsign
+          cd /tmp/zsign
+          make
+          mkdir -p dist_tools
+          cp zsign.exe dist_tools/zsign.exe
+          echo "zsign built OK"
+
+      # ── Install Python deps + PyInstaller ─────────────────────────────────────
       - name: Install Python dependencies + PyInstaller
         shell: bash
         run: |
@@ -43,7 +71,7 @@ jobs:
           pip install -r requirements.txt
           pip install pyinstaller
 
-      # ── zsign (Linux) ─────────────────────────────────────────────────────────
+      # ── Build zsign (Linux) ───────────────────────────────────────────────────
       - name: Build zsign (Linux)
         if: matrix.platform == 'linux'
         continue-on-error: true
@@ -58,7 +86,7 @@ jobs:
           cp zsign "$GITHUB_WORKSPACE/dist_tools/zsign"
           chmod +x "$GITHUB_WORKSPACE/dist_tools/zsign"
 
-      # ── zsign (macOS) ─────────────────────────────────────────────────────────
+      # ── Build zsign (macOS) ───────────────────────────────────────────────────
       - name: Build zsign (macOS)
         if: matrix.platform == 'macos'
         continue-on-error: true
@@ -76,10 +104,7 @@ jobs:
           cp zsign "$GITHUB_WORKSPACE/dist_tools/zsign"
           chmod +x "$GITHUB_WORKSPACE/dist_tools/zsign"
 
-      # ── zsign (Windows) — skip, no reliable headless build path ──────────────
-      # Users who need zsign on Windows can place it next to the .exe manually.
-
-      # ── ldid (Linux) — prebuilt static binary ─────────────────────────────────
+      # ── Download ldid (Linux) ─────────────────────────────────────────────────
       - name: Download ldid (Linux)
         if: matrix.platform == 'linux'
         continue-on-error: true
@@ -93,7 +118,7 @@ jobs:
             chmod +x dist_tools/ldid
           fi
 
-      # ── ldid (macOS) ──────────────────────────────────────────────────────────
+      # ── Install ldid (macOS) ──────────────────────────────────────────────────
       - name: Install ldid (macOS)
         if: matrix.platform == 'macos'
         continue-on-error: true
@@ -104,13 +129,14 @@ jobs:
           cp "$(which ldid)" dist_tools/ldid
           chmod +x dist_tools/ldid
 
-      # ── Ensure dist_tools exists (all platforms) ───────────────────────────────
+      # ── Ensure dist_tools exists (all platforms) ──────────────────────────────
       - name: Ensure dist_tools exists
         shell: bash
         run: mkdir -p dist_tools
 
-      # ── PyInstaller: CLI ──────────────────────────────────────────────────────
-      - name: Build CLI executable
+      # ── PyInstaller: CLI (Linux / macOS) ─────────────────────────────────────
+      - name: Build CLI executable (Linux / macOS)
+        if: matrix.platform != 'windows'
         shell: bash
         run: |
           pyinstaller --onefile --name ipasideloader \
@@ -127,8 +153,28 @@ jobs:
             --collect-all Anisette \
             ipasideloader/cli.py
 
-      # ── PyInstaller: GUI ──────────────────────────────────────────────────────
-      - name: Build GUI executable
+      # ── PyInstaller: CLI (Windows) — PowerShell, backtick continuation ────────
+      - name: Build CLI executable (Windows)
+        if: matrix.platform == 'windows'
+        shell: pwsh
+        run: |
+          pyinstaller --onefile --name ipasideloader `
+            --hidden-import=pymobiledevice3 `
+            --hidden-import=pymobiledevice3.services `
+            --hidden-import=pymobiledevice3.lockdown `
+            --hidden-import=pymobiledevice3.usbmux `
+            --hidden-import=zeroconf `
+            --hidden-import=construct `
+            --hidden-import=cryptography `
+            --hidden-import=Anisette `
+            --hidden-import=srp `
+            --collect-all pymobiledevice3 `
+            --collect-all Anisette `
+            ipasideloader/cli.py
+
+      # ── PyInstaller: GUI (Linux / macOS) ─────────────────────────────────────
+      - name: Build GUI executable (Linux / macOS)
+        if: matrix.platform != 'windows'
         shell: bash
         run: |
           pyinstaller --onefile --name ipasideloader-gui \
@@ -146,6 +192,28 @@ jobs:
             --hidden-import=srp \
             --collect-all pymobiledevice3 \
             --collect-all Anisette \
+            ipasideloader/gui/app.py
+
+      # ── PyInstaller: GUI (Windows) — PowerShell, backtick continuation ────────
+      - name: Build GUI executable (Windows)
+        if: matrix.platform == 'windows'
+        shell: pwsh
+        run: |
+          pyinstaller --onefile --name ipasideloader-gui `
+            --hidden-import=tkinter `
+            --hidden-import=tkinter.ttk `
+            --hidden-import=tkinter.messagebox `
+            --hidden-import=pymobiledevice3 `
+            --hidden-import=pymobiledevice3.services `
+            --hidden-import=pymobiledevice3.lockdown `
+            --hidden-import=pymobiledevice3.usbmux `
+            --hidden-import=zeroconf `
+            --hidden-import=construct `
+            --hidden-import=cryptography `
+            --hidden-import=Anisette `
+            --hidden-import=srp `
+            --collect-all pymobiledevice3 `
+            --collect-all Anisette `
             ipasideloader/gui/app.py
 
       # ── Package (Linux / macOS) ───────────────────────────────────────────────

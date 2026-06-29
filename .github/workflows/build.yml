@@ -23,9 +23,6 @@ jobs:
           - os: windows-latest
             platform: windows
             asset_name: ipasideloader-windows-x86_64
-          - os: macos-13
-            platform: macos
-            asset_name: ipasideloader-macos-x86_64
 
     steps:
       - name: Checkout
@@ -63,21 +60,6 @@ jobs:
           cp ../../bin/zsign "$GITHUB_WORKSPACE/dist_tools/zsign"
           chmod +x "$GITHUB_WORKSPACE/dist_tools/zsign"
 
-      # ── zsign (macOS) — Makefile lives in build/macos/ ───────────────────────
-      - name: Build zsign (macOS)
-        if: matrix.platform == 'macos'
-        continue-on-error: true
-        shell: bash
-        run: |
-          brew install openssl@3 pkg-config
-          export PKG_CONFIG_PATH="$(brew --prefix openssl@3)/lib/pkgconfig:$PKG_CONFIG_PATH"
-          git clone --depth 1 https://github.com/zhlynn/zsign.git /tmp/zsign
-          cd /tmp/zsign/build/macos
-          make
-          mkdir -p "$GITHUB_WORKSPACE/dist_tools"
-          cp ../../bin/zsign "$GITHUB_WORKSPACE/dist_tools/zsign"
-          chmod +x "$GITHUB_WORKSPACE/dist_tools/zsign"
-
       # ── zsign (Windows) — VS2022 solution, OpenSSL bundled in repo ────────────
       - name: Build zsign (Windows)
         if: matrix.platform == 'windows'
@@ -105,25 +87,14 @@ jobs:
             chmod +x dist_tools/ldid
           fi
 
-      # ── ldid (macOS) ─────────────────────────────────────────────────────────
-      - name: Install ldid (macOS)
-        if: matrix.platform == 'macos'
-        continue-on-error: true
-        shell: bash
-        run: |
-          mkdir -p dist_tools
-          brew install ldid
-          cp "$(which ldid)" dist_tools/ldid
-          chmod +x dist_tools/ldid
-
       # ── Ensure dist_tools exists ──────────────────────────────────────────────
       - name: Ensure dist_tools exists
         shell: bash
         run: mkdir -p dist_tools
 
-      # ── PyInstaller: CLI (Linux / macOS) ─────────────────────────────────────
-      - name: Build CLI executable (Linux / macOS)
-        if: matrix.platform != 'windows'
+      # ── PyInstaller: CLI (Linux) ──────────────────────────────────────────────
+      - name: Build CLI executable (Linux)
+        if: matrix.platform == 'linux'
         shell: bash
         run: |
           pyinstaller --onefile --name ipasideloader \
@@ -159,9 +130,9 @@ jobs:
             --collect-all Anisette `
             ipasideloader/cli.py
 
-      # ── PyInstaller: GUI (Linux / macOS) ─────────────────────────────────────
-      - name: Build GUI executable (Linux / macOS)
-        if: matrix.platform != 'windows'
+      # ── PyInstaller: GUI (Linux) ──────────────────────────────────────────────
+      - name: Build GUI executable (Linux)
+        if: matrix.platform == 'linux'
         shell: bash
         run: |
           pyinstaller --onefile --name ipasideloader-gui \
@@ -203,9 +174,9 @@ jobs:
             --collect-all Anisette `
             ipasideloader/gui/app.py
 
-      # ── Package (Linux / macOS) ───────────────────────────────────────────────
-      - name: Package release zip (Linux / macOS)
-        if: matrix.platform != 'windows'
+      # ── Package (Linux) ───────────────────────────────────────────────────────
+      - name: Package release zip (Linux)
+        if: matrix.platform == 'linux'
         shell: bash
         run: |
           mkdir -p release_pkg

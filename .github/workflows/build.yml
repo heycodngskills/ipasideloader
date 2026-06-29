@@ -133,6 +133,7 @@ jobs:
             --hidden-import=cryptography \
             --hidden-import=Anisette \
             --hidden-import=srp \
+            --hidden-import=certifi \
             --collect-all pymobiledevice3 \
             --collect-all Anisette \
             run_cli.py
@@ -152,6 +153,7 @@ jobs:
             --hidden-import=cryptography `
             --hidden-import=Anisette `
             --hidden-import=srp `
+            --hidden-import=certifi `
             --collect-all pymobiledevice3 `
             --collect-all Anisette `
             run_cli.py
@@ -174,6 +176,7 @@ jobs:
             --hidden-import=cryptography \
             --hidden-import=Anisette \
             --hidden-import=srp \
+            --hidden-import=certifi \
             --collect-all pymobiledevice3 \
             --collect-all Anisette \
             run_gui.py
@@ -196,6 +199,7 @@ jobs:
             --hidden-import=cryptography `
             --hidden-import=Anisette `
             --hidden-import=srp `
+            --hidden-import=certifi `
             --collect-all pymobiledevice3 `
             --collect-all Anisette `
             run_gui.py

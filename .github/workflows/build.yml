@@ -37,15 +37,17 @@ jobs:
           python-version: "3.11"
 
       - name: Install Python dependencies + PyInstaller
+        shell: bash
         run: |
           pip install --upgrade pip
           pip install -r requirements.txt
           pip install pyinstaller
 
-      # ── zsign (Linux) — uses Makefile, not CMake ─────────────────────────────
+      # ── zsign (Linux) ─────────────────────────────────────────────────────────
       - name: Build zsign (Linux)
         if: matrix.platform == 'linux'
         continue-on-error: true
+        shell: bash
         run: |
           sudo apt-get update -q
           sudo apt-get install -y build-essential libssl-dev libminizip-dev zlib1g-dev
@@ -55,12 +57,12 @@ jobs:
           mkdir -p "$GITHUB_WORKSPACE/dist_tools"
           cp zsign "$GITHUB_WORKSPACE/dist_tools/zsign"
           chmod +x "$GITHUB_WORKSPACE/dist_tools/zsign"
-          echo "zsign built OK"
 
-      # ── zsign (macOS) — uses Makefile with brew deps ─────────────────────────
+      # ── zsign (macOS) ─────────────────────────────────────────────────────────
       - name: Build zsign (macOS)
         if: matrix.platform == 'macos'
         continue-on-error: true
+        shell: bash
         run: |
           brew install openssl@3 minizip
           git clone --depth 1 https://github.com/zhlynn/zsign.git /tmp/zsign
@@ -73,37 +75,15 @@ jobs:
           mkdir -p "$GITHUB_WORKSPACE/dist_tools"
           cp zsign "$GITHUB_WORKSPACE/dist_tools/zsign"
           chmod +x "$GITHUB_WORKSPACE/dist_tools/zsign"
-          echo "zsign built OK"
 
-      # ── zsign (Windows) — MSYS2/MinGW64 ─────────────────────────────────────
-      - name: Setup MSYS2 (Windows)
-        if: matrix.platform == 'windows'
-        uses: msys2/setup-msys2@v2
-        with:
-          msystem: MINGW64
-          update: false
-          install: >-
-            make
-            mingw-w64-x86_64-gcc
-            mingw-w64-x86_64-openssl
-            mingw-w64-x86_64-minizip
+      # ── zsign (Windows) — skip, no reliable headless build path ──────────────
+      # Users who need zsign on Windows can place it next to the .exe manually.
 
-      - name: Build zsign (Windows)
-        if: matrix.platform == 'windows'
-        continue-on-error: true
-        shell: msys2 {0}
-        run: |
-          git clone --depth 1 https://github.com/zhlynn/zsign.git /tmp/zsign
-          cd /tmp/zsign
-          make
-          mkdir -p dist_tools
-          cp zsign.exe dist_tools/zsign.exe
-          echo "zsign built OK"
-
-      # ── ldid (Linux) — prebuilt static binary ────────────────────────────────
+      # ── ldid (Linux) — prebuilt static binary ─────────────────────────────────
       - name: Download ldid (Linux)
         if: matrix.platform == 'linux'
         continue-on-error: true
+        shell: bash
         run: |
           mkdir -p dist_tools
           LDID_URL=$(curl -s https://api.github.com/repos/ProcursusTeam/ldid/releases/latest \
@@ -111,30 +91,27 @@ jobs:
           if [ -n "$LDID_URL" ]; then
             curl -fsSL "$LDID_URL" -o dist_tools/ldid
             chmod +x dist_tools/ldid
-            echo "ldid downloaded OK"
-          else
-            echo "No ldid prebuilt found for Linux — skipping"
           fi
 
-      # ── ldid (macOS) — brew ───────────────────────────────────────────────────
+      # ── ldid (macOS) ──────────────────────────────────────────────────────────
       - name: Install ldid (macOS)
         if: matrix.platform == 'macos'
         continue-on-error: true
+        shell: bash
         run: |
           mkdir -p dist_tools
           brew install ldid
           cp "$(which ldid)" dist_tools/ldid
           chmod +x dist_tools/ldid
-          echo "ldid installed OK"
 
-      # ── ldid not supported on Windows ────────────────────────────────────────
-      - name: Ensure dist_tools exists (Windows)
-        if: matrix.platform == 'windows'
-        shell: pwsh
-        run: New-Item -ItemType Directory -Force dist_tools
+      # ── Ensure dist_tools exists (all platforms) ───────────────────────────────
+      - name: Ensure dist_tools exists
+        shell: bash
+        run: mkdir -p dist_tools
 
-      # ── PyInstaller: CLI ─────────────────────────────────────────────────────
+      # ── PyInstaller: CLI ──────────────────────────────────────────────────────
       - name: Build CLI executable
+        shell: bash
         run: |
           pyinstaller --onefile --name ipasideloader \
             --hidden-import=pymobiledevice3 \
@@ -150,8 +127,9 @@ jobs:
             --collect-all Anisette \
             ipasideloader/cli.py
 
-      # ── PyInstaller: GUI ─────────────────────────────────────────────────────
+      # ── PyInstaller: GUI ──────────────────────────────────────────────────────
       - name: Build GUI executable
+        shell: bash
         run: |
           pyinstaller --onefile --name ipasideloader-gui \
             --hidden-import=tkinter \
@@ -170,18 +148,20 @@ jobs:
             --collect-all Anisette \
             ipasideloader/gui/app.py
 
-      # ── Package everything into a zip ────────────────────────────────────────
+      # ── Package (Linux / macOS) ───────────────────────────────────────────────
       - name: Package release zip (Linux / macOS)
         if: matrix.platform != 'windows'
+        shell: bash
         run: |
           mkdir -p release_pkg
-          cp dist/ipasideloader      release_pkg/
-          cp dist/ipasideloader-gui  release_pkg/
+          cp dist/ipasideloader     release_pkg/
+          cp dist/ipasideloader-gui release_pkg/
           [ -f dist_tools/zsign ] && cp dist_tools/zsign release_pkg/ || true
           [ -f dist_tools/ldid  ] && cp dist_tools/ldid  release_pkg/ || true
           cp README.md release_pkg/
           cd release_pkg && zip -r "../${{ matrix.asset_name }}.zip" . && cd ..
 
+      # ── Package (Windows) ─────────────────────────────────────────────────────
       - name: Package release zip (Windows)
         if: matrix.platform == 'windows'
         shell: pwsh
@@ -193,7 +173,7 @@ jobs:
           Copy-Item README.md release_pkg\
           Compress-Archive -Path release_pkg\* -DestinationPath "${{ matrix.asset_name }}.zip"
 
-      # ── Upload to GitHub Release ─────────────────────────────────────────────
+      # ── Upload to GitHub Release ──────────────────────────────────────────────
       - name: Upload release asset
         uses: softprops/action-gh-release@v2
         if: startsWith(github.ref, 'refs/tags/')

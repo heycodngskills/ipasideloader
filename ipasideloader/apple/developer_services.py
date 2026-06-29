@@ -10,6 +10,7 @@ revisions.
 """
 from __future__ import annotations
 
+import base64
 import logging
 import plistlib
 import uuid
@@ -154,3 +155,67 @@ class DeveloperServicesClient:
                 "name": device_name,
             },
         )
+
+    def list_certificates(self, team_id: str) -> list[dict]:
+        """
+        List active development certificates for the team.
+
+        NOTE: The exact endpoint name and response fields are based on what
+        AltServer/SideStore-style tooling has observed from Xcode traffic.
+        If this call fails, the free_provision flow will fall back to
+        generating a fresh certificate rather than crashing.
+        """
+        try:
+            resp = self._post("listAllDevelopmentCerts.action", {"teamId": team_id})
+            return resp.get("certRequests", [])
+        except ProvisioningError:
+            return []
+
+    def submit_csr(self, team_id: str, csr_der: bytes) -> tuple[bytes, str]:
+        """
+        Submit a Certificate Signing Request to Apple and return the
+        issued DER-encoded certificate + its certRequestId.
+
+        The CSR is sent as base64 in the ``csrContent`` field — the same
+        way Xcode submits it via ``submitDevelopmentCSR.action``.
+
+        NOTE: Apple's response format for this endpoint has varied slightly
+        across Xcode versions. If the cert isn't in the immediate response
+        we fall back to downloading it via ``downloadDevelopmentCert.action``.
+        If you see ProvisioningError here, capture the live traffic with
+        mitmproxy against a real Xcode signing to confirm current field names.
+        """
+        resp = self._post(
+            "submitDevelopmentCSR.action",
+            {
+                "teamId": team_id,
+                "csrContent": base64.b64encode(csr_der).decode(),
+            },
+        )
+
+        cert_req = resp.get("certRequest", {})
+        cert_id = str(cert_req.get("certRequestId", ""))
+
+        # Apple may return the cert immediately or require a separate download.
+        cert_data = cert_req.get("certRequestDerEncoded") or cert_req.get("certificate")
+
+        if cert_data is None and cert_id:
+            # Try the download endpoint.
+            dl = self._post("downloadDevelopmentCert.action", {
+                "teamId": team_id,
+                "certRequestId": cert_id,
+            })
+            cert_req2 = dl.get("certRequest", {})
+            cert_data = cert_req2.get("certRequestDerEncoded") or cert_req2.get("certificate")
+
+        if cert_data is None:
+            raise ProvisioningError(
+                "Apple issued a certificate request but did not return certificate data. "
+                f"certRequestId={cert_id!r}. "
+                "This may be a field-name mismatch — inspect the raw plist response."
+            )
+
+        if isinstance(cert_data, str):
+            cert_data = base64.b64decode(cert_data)
+
+        return bytes(cert_data), cert_id

@@ -5,14 +5,39 @@ on:
     tags:
       - "v*"
   workflow_dispatch:
+    inputs:
+      version:
+        description: "Version tag to create (e.g. v1.0.0). Leave blank to build without releasing."
+        required: false
+        default: ""
 
 permissions:
   contents: write
 
 jobs:
+  tag:
+    name: Create tag (if version provided)
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch' && inputs.version != ''
+    outputs:
+      tag: ${{ steps.create_tag.outputs.tag }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Create and push tag
+        id: create_tag
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag "${{ inputs.version }}"
+          git push origin "${{ inputs.version }}"
+          echo "tag=${{ inputs.version }}" >> "$GITHUB_OUTPUT"
+
   build:
     name: Build — ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
+    needs: [tag]
+    if: always() && !cancelled() && !failure()
     strategy:
       fail-fast: false
       matrix:
@@ -93,6 +118,7 @@ jobs:
         run: mkdir -p dist_tools
 
       # ── PyInstaller: CLI (Linux) ──────────────────────────────────────────────
+      # Uses run_cli.py wrapper to avoid relative-import crash in __main__ context
       - name: Build CLI executable (Linux)
         if: matrix.platform == 'linux'
         shell: bash
@@ -109,7 +135,7 @@ jobs:
             --hidden-import=srp \
             --collect-all pymobiledevice3 \
             --collect-all Anisette \
-            ipasideloader/cli.py
+            run_cli.py
 
       # ── PyInstaller: CLI (Windows) ────────────────────────────────────────────
       - name: Build CLI executable (Windows)
@@ -128,7 +154,7 @@ jobs:
             --hidden-import=srp `
             --collect-all pymobiledevice3 `
             --collect-all Anisette `
-            ipasideloader/cli.py
+            run_cli.py
 
       # ── PyInstaller: GUI (Linux) ──────────────────────────────────────────────
       - name: Build GUI executable (Linux)
@@ -150,7 +176,7 @@ jobs:
             --hidden-import=srp \
             --collect-all pymobiledevice3 \
             --collect-all Anisette \
-            ipasideloader/gui/app.py
+            run_gui.py
 
       # ── PyInstaller: GUI (Windows) ────────────────────────────────────────────
       - name: Build GUI executable (Windows)
@@ -172,7 +198,7 @@ jobs:
             --hidden-import=srp `
             --collect-all pymobiledevice3 `
             --collect-all Anisette `
-            ipasideloader/gui/app.py
+            run_gui.py
 
       # ── Package (Linux) ───────────────────────────────────────────────────────
       - name: Package release zip (Linux)
@@ -202,14 +228,15 @@ jobs:
       # ── Upload to GitHub Release ──────────────────────────────────────────────
       - name: Upload release asset
         uses: softprops/action-gh-release@v2
-        if: startsWith(github.ref, 'refs/tags/')
+        if: startsWith(github.ref, 'refs/tags/') || (github.event_name == 'workflow_dispatch' && inputs.version != '')
         with:
+          tag_name: ${{ inputs.version || github.ref_name }}
           files: ${{ matrix.asset_name }}.zip
           generate_release_notes: true
 
-      - name: Upload build artifact (non-tag runs)
+      - name: Upload build artifact (non-release runs)
         uses: actions/upload-artifact@v4
-        if: "!startsWith(github.ref, 'refs/tags/')"
+        if: "!(startsWith(github.ref, 'refs/tags/') || (github.event_name == 'workflow_dispatch' && inputs.version != ''))"
         with:
           name: ${{ matrix.asset_name }}
           path: ${{ matrix.asset_name }}.zip

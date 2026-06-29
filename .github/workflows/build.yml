@@ -136,6 +136,7 @@ jobs:
             --hidden-import=certifi \
             --collect-all pymobiledevice3 \
             --collect-all Anisette \
+            --runtime-hook=hooks/hook_ssl_certs.py \
             run_cli.py
 
       # ── PyInstaller: CLI (Windows) ────────────────────────────────────────────
@@ -156,6 +157,7 @@ jobs:
             --hidden-import=certifi `
             --collect-all pymobiledevice3 `
             --collect-all Anisette `
+            --runtime-hook=hooks/hook_ssl_certs.py `
             run_cli.py
 
       # ── PyInstaller: GUI (Linux) ──────────────────────────────────────────────
@@ -179,6 +181,7 @@ jobs:
             --hidden-import=certifi \
             --collect-all pymobiledevice3 \
             --collect-all Anisette \
+            --runtime-hook=hooks/hook_ssl_certs.py \
             run_gui.py
 
       # ── PyInstaller: GUI (Windows) ────────────────────────────────────────────
@@ -202,6 +205,7 @@ jobs:
             --hidden-import=certifi `
             --collect-all pymobiledevice3 `
             --collect-all Anisette `
+            --runtime-hook=hooks/hook_ssl_certs.py `
             run_gui.py
 
       # ── Package (Linux) ───────────────────────────────────────────────────────

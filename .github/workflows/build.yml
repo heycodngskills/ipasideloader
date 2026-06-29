@@ -19,18 +19,12 @@ jobs:
         include:
           - os: ubuntu-22.04
             platform: linux
-            exe_cli: ipasideloader
-            exe_gui: ipasideloader-gui
             asset_name: ipasideloader-linux-x86_64
           - os: windows-latest
             platform: windows
-            exe_cli: ipasideloader.exe
-            exe_gui: ipasideloader-gui.exe
             asset_name: ipasideloader-windows-x86_64
           - os: macos-13
             platform: macos
-            exe_cli: ipasideloader
-            exe_gui: ipasideloader-gui
             asset_name: ipasideloader-macos-x86_64
 
     steps:
@@ -48,72 +42,96 @@ jobs:
           pip install -r requirements.txt
           pip install pyinstaller
 
-      # ── zsign (Linux) ────────────────────────────────────────────────────────
+      # ── zsign (Linux) — uses Makefile, not CMake ─────────────────────────────
       - name: Build zsign (Linux)
         if: matrix.platform == 'linux'
+        continue-on-error: true
         run: |
           sudo apt-get update -q
-          sudo apt-get install -y cmake build-essential libssl-dev zlib1g-dev
+          sudo apt-get install -y build-essential libssl-dev libminizip-dev zlib1g-dev
           git clone --depth 1 https://github.com/zhlynn/zsign.git /tmp/zsign
-          cmake -S /tmp/zsign -B /tmp/zsign/build -DCMAKE_BUILD_TYPE=Release
-          cmake --build /tmp/zsign/build --parallel
-          mkdir -p dist_tools
-          cp /tmp/zsign/build/zsign dist_tools/zsign
-          chmod +x dist_tools/zsign
+          cd /tmp/zsign
+          make
+          mkdir -p "$GITHUB_WORKSPACE/dist_tools"
+          cp zsign "$GITHUB_WORKSPACE/dist_tools/zsign"
+          chmod +x "$GITHUB_WORKSPACE/dist_tools/zsign"
+          echo "zsign built OK"
 
-      # ── zsign (macOS) ────────────────────────────────────────────────────────
+      # ── zsign (macOS) — uses Makefile with brew deps ─────────────────────────
       - name: Build zsign (macOS)
         if: matrix.platform == 'macos'
+        continue-on-error: true
         run: |
-          brew install cmake openssl@3 zlib
+          brew install openssl@3 minizip
           git clone --depth 1 https://github.com/zhlynn/zsign.git /tmp/zsign
-          cmake -S /tmp/zsign -B /tmp/zsign/build \
-            -DCMAKE_BUILD_TYPE=Release \
-            -DOPENSSL_ROOT_DIR=$(brew --prefix openssl@3)
-          cmake --build /tmp/zsign/build --parallel
-          mkdir -p dist_tools
-          cp /tmp/zsign/build/zsign dist_tools/zsign
-          chmod +x dist_tools/zsign
+          cd /tmp/zsign
+          OPENSSL_PREFIX=$(brew --prefix openssl@3)
+          MINIZIP_PREFIX=$(brew --prefix minizip)
+          make \
+            CPPFLAGS="-I$OPENSSL_PREFIX/include -I$MINIZIP_PREFIX/include" \
+            LDFLAGS="-L$OPENSSL_PREFIX/lib -L$MINIZIP_PREFIX/lib"
+          mkdir -p "$GITHUB_WORKSPACE/dist_tools"
+          cp zsign "$GITHUB_WORKSPACE/dist_tools/zsign"
+          chmod +x "$GITHUB_WORKSPACE/dist_tools/zsign"
+          echo "zsign built OK"
 
-      # ── zsign (Windows) ──────────────────────────────────────────────────────
+      # ── zsign (Windows) — MSYS2/MinGW64 ─────────────────────────────────────
+      - name: Setup MSYS2 (Windows)
+        if: matrix.platform == 'windows'
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: MINGW64
+          update: false
+          install: >-
+            make
+            mingw-w64-x86_64-gcc
+            mingw-w64-x86_64-openssl
+            mingw-w64-x86_64-minizip
+
       - name: Build zsign (Windows)
         if: matrix.platform == 'windows'
-        shell: pwsh
+        continue-on-error: true
+        shell: msys2 {0}
         run: |
-          choco install cmake --installargs 'ADD_CMAKE_TO_PATH=System' -y
-          git clone --depth 1 https://github.com/zhlynn/zsign.git C:\zsign
-          cmake -S C:\zsign -B C:\zsign\build
-          cmake --build C:\zsign\build --config Release
-          New-Item -ItemType Directory -Force dist_tools
-          Copy-Item C:\zsign\build\Release\zsign.exe dist_tools\zsign.exe
+          git clone --depth 1 https://github.com/zhlynn/zsign.git /tmp/zsign
+          cd /tmp/zsign
+          make
+          mkdir -p dist_tools
+          cp zsign.exe dist_tools/zsign.exe
+          echo "zsign built OK"
 
-      # ── ldid (Linux) ─────────────────────────────────────────────────────────
+      # ── ldid (Linux) — prebuilt static binary ────────────────────────────────
       - name: Download ldid (Linux)
         if: matrix.platform == 'linux'
+        continue-on-error: true
         run: |
+          mkdir -p dist_tools
           LDID_URL=$(curl -s https://api.github.com/repos/ProcursusTeam/ldid/releases/latest \
             | grep "browser_download_url" | grep "linux_x86_64" | cut -d'"' -f4 | head -1)
           if [ -n "$LDID_URL" ]; then
-            curl -L "$LDID_URL" -o dist_tools/ldid
+            curl -fsSL "$LDID_URL" -o dist_tools/ldid
             chmod +x dist_tools/ldid
+            echo "ldid downloaded OK"
           else
-            echo "ldid prebuilt not found for Linux, skipping"
+            echo "No ldid prebuilt found for Linux — skipping"
           fi
 
-      # ── ldid (macOS) ─────────────────────────────────────────────────────────
+      # ── ldid (macOS) — brew ───────────────────────────────────────────────────
       - name: Install ldid (macOS)
         if: matrix.platform == 'macos'
+        continue-on-error: true
         run: |
+          mkdir -p dist_tools
           brew install ldid
-          cp $(which ldid) dist_tools/ldid
+          cp "$(which ldid)" dist_tools/ldid
           chmod +x dist_tools/ldid
+          echo "ldid installed OK"
 
-      # ── ldid (Windows — not applicable) ─────────────────────────────────────
-      - name: ldid note (Windows)
+      # ── ldid not supported on Windows ────────────────────────────────────────
+      - name: Ensure dist_tools exists (Windows)
         if: matrix.platform == 'windows'
         shell: pwsh
-        run: |
-          Write-Host "ldid is not supported on Windows; zsign is the signing backend for this platform."
+        run: New-Item -ItemType Directory -Force dist_tools
 
       # ── PyInstaller: CLI ─────────────────────────────────────────────────────
       - name: Build CLI executable
@@ -157,21 +175,19 @@ jobs:
         if: matrix.platform != 'windows'
         run: |
           mkdir -p release_pkg
-          cp dist/ipasideloader release_pkg/
-          cp dist/ipasideloader-gui release_pkg/
+          cp dist/ipasideloader      release_pkg/
+          cp dist/ipasideloader-gui  release_pkg/
           [ -f dist_tools/zsign ] && cp dist_tools/zsign release_pkg/ || true
           [ -f dist_tools/ldid  ] && cp dist_tools/ldid  release_pkg/ || true
           cp README.md release_pkg/
-          cd release_pkg
-          zip -r ../${{ matrix.asset_name }}.zip .
-          cd ..
+          cd release_pkg && zip -r "../${{ matrix.asset_name }}.zip" . && cd ..
 
       - name: Package release zip (Windows)
         if: matrix.platform == 'windows'
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force release_pkg
-          Copy-Item dist\ipasideloader.exe release_pkg\
+          Copy-Item dist\ipasideloader.exe     release_pkg\
           Copy-Item dist\ipasideloader-gui.exe release_pkg\
           if (Test-Path dist_tools\zsign.exe) { Copy-Item dist_tools\zsign.exe release_pkg\ }
           Copy-Item README.md release_pkg\

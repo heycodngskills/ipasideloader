@@ -66,16 +66,19 @@ class DeveloperServicesClient:
         params = self._base_params()
         params.update(extra_params)
         body = plistlib.dumps(params)
+        # Apple's developer-services backend authenticates via X-Apple-DS-ID and
+        # X-Apple-Identity-Token headers (dsid + search_token from the GSA session),
+        # NOT a myacinfo cookie (that key doesn't exist in the GSA response dict).
         headers = {
             "Content-Type": "text/x-xml-plist",
+            "X-Apple-DS-ID": self.apple_session.dsid,
+            "X-Apple-Identity-Token": self.apple_session.search_token,
             **self.anisette_headers,
         }
-        cookies = {"myacinfo": self.apple_session.raw.get("myacinfo", "")}
         resp = self._http.post(
             f"{DEV_SERVICES_BASE}/{path}",
             data=body,
             headers=headers,
-            cookies=cookies,
             timeout=30,
         )
         resp.raise_for_status()

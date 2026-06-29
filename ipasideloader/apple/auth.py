@@ -126,8 +126,19 @@ class AppleAccountClient:
         iterations = init_resp.get("i", 1000)
         protocol = init_resp.get("sp", "s2k")
 
-        pw_hash = hashlib.sha256(password.encode("utf-8")).digest() if protocol == "s2k" else password.encode()
-        usr.p = pw_hash  # srp library lets us override the password digest used internally
+        if protocol == "s2k":
+            pw_hash = hashlib.sha256(password.encode("utf-8")).digest()
+        elif protocol == "s2k_fo":
+            # s2k_fo: PBKDF2-HMAC-SHA256 using the server-supplied iteration count.
+            pw_hash = hashlib.pbkdf2_hmac(
+                "sha256",
+                hashlib.sha256(password.encode("utf-8")).digest(),
+                salt,
+                iterations,
+            )
+        else:
+            pw_hash = password.encode("utf-8")
+        usr.p = pw_hash  # srp library uses self.p inside process_challenge via gen_x
 
         M = usr.process_challenge(salt, b)
         if M is None:
@@ -141,15 +152,18 @@ class AppleAccountClient:
         })
 
         status = challenge_resp.get("Status", {})
-        if status.get("ec", 0) != 0:
+        ec = status.get("ec", 0)
+
+        # -22406 is Apple's "2FA required" status code — must be handled before
+        # the generic error raise, otherwise it would be raised as a plain auth failure.
+        needs_2fa = "trustedDeviceTimeout" in challenge_resp or ec == -22406
+
+        if ec != 0 and not needs_2fa:
             raise AppleAuthError(f"GSA authentication failed: {status.get('em', status)}")
 
         usr.verify_session(challenge_resp.get("M2"))
         if not usr.authenticated():
             raise AppleAuthError("SRP server proof verification failed.")
-
-        # At this point Apple may require 2FA before issuing real tokens.
-        needs_2fa = "trustedDeviceTimeout" in challenge_resp or status.get("ec") == -22406
         if needs_2fa and not two_factor_code:
             raise TwoFactorRequired(
                 "This Apple ID requires a two-factor authentication code. "

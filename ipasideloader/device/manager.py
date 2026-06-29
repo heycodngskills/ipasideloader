@@ -96,7 +96,7 @@ class DeviceSession:
         from pymobiledevice3.services.installation_proxy import InstallationProxyService
 
         try:
-            await InstallationProxyService(lockdown=self.lockdown).install_from_local(
+            InstallationProxyService(lockdown=self.lockdown).install_from_local(
                 Path(ipa_path), developer=developer
             )
         except Exception as e:

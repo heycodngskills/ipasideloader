@@ -138,7 +138,7 @@ class AnisetteProvider:
                 except Exception as e:
                     logger.warning("Custom anisette server %s failed: %s", self.custom_url, e)
 
-        # 2. Built-in local provider via pymobiledevice3, if usable.
+        # 2. Built-in local provider via Anisette.py, if usable.
         builtin = self._try_builtin()
         if builtin is not None:
             return builtin

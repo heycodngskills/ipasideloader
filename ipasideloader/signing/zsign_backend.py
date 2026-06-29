@@ -58,7 +58,6 @@ class ZSignBackend(SigningBackend):
             zsign,
             "-k", str(request.p12_path),
             "-m", str(request.mobileprovision_path),
-            "-o", str(request.app_bundle_path),  # zsign can sign-in-place on a dir
         ]
         if request.p12_password:
             args += ["-p", request.p12_password]
@@ -67,7 +66,7 @@ class ZSignBackend(SigningBackend):
         if request.bundle_id:
             args += ["-b", request.bundle_id]
 
-        # Sign the bundle directory itself (zsign accepts a .app dir or .ipa).
+        # Sign the bundle directory in-place (zsign accepts a .app dir as the final positional arg).
         args.append(str(request.app_bundle_path))
 
         run_subprocess(args)

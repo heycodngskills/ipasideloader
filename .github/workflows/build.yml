@@ -138,6 +138,7 @@ jobs:
             --collect-all pymobiledevice3 \
             --collect-all Anisette \
             --collect-data certifi \
+            --add-data 'ipasideloader/certs:ipasideloader/certs' \
             --runtime-hook=hooks/hook_ssl_certs.py \
             run_cli.py
 
@@ -161,6 +162,7 @@ jobs:
             --collect-all pymobiledevice3 `
             --collect-all Anisette `
             --collect-data certifi `
+            --add-data 'ipasideloader/certs;ipasideloader/certs' `
             --runtime-hook=hooks/hook_ssl_certs.py `
             run_cli.py
 
@@ -187,6 +189,7 @@ jobs:
             --collect-all pymobiledevice3 \
             --collect-all Anisette \
             --collect-data certifi \
+            --add-data 'ipasideloader/certs:ipasideloader/certs' \
             --runtime-hook=hooks/hook_ssl_certs.py \
             run_gui.py
 
@@ -213,6 +216,7 @@ jobs:
             --collect-all pymobiledevice3 `
             --collect-all Anisette `
             --collect-data certifi `
+            --add-data 'ipasideloader/certs;ipasideloader/certs' `
             --runtime-hook=hooks/hook_ssl_certs.py `
             run_gui.py
 

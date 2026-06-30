@@ -763,6 +763,7 @@ class SettingsTab(ttk.Frame):
         self.log_to_file_var     = tk.BooleanVar(value=settings.get("log_to_file", False))
         self.remember_apple_var  = tk.BooleanVar(value=settings.get("remember_apple_id", True))
         self.timeout_var         = tk.StringVar(value=str(settings.get("request_timeout", 20)))
+        self.disable_ssl_var     = tk.BooleanVar(value=settings.get("disable_ssl_verify", False))
 
         ttk.Label(self, text="Settings", style="H1.TLabel").grid(
             row=0, column=0, sticky="w", pady=(0, 14))
@@ -799,6 +800,16 @@ class SettingsTab(ttk.Frame):
             row=0, column=0, sticky="w", pady=(0, 2))
         ttk.Entry(net, textvariable=self.timeout_var, width=8).grid(
             row=1, column=0, sticky="w")
+
+        ttk.Checkbutton(net, text="Disable SSL certificate verification  "
+                             "(use if you get SSL errors and have no antivirus)",
+                         variable=self.disable_ssl_var,
+                         style="TCheckbutton").grid(
+            row=2, column=0, columnspan=2, sticky="w", pady=(8, 0))
+        ttk.Label(net, text="⚠  Only enable if you trust your network",
+                  foreground=WARN, background=BG2,
+                  font=("Segoe UI", 8)).grid(
+            row=3, column=0, columnspan=2, sticky="w")
 
         self._section("Logging", 9)
         logs = Card(self)
@@ -854,6 +865,12 @@ class SettingsTab(ttk.Frame):
             row=0, column=1, padx=(6, 0))
 
     def _save(self) -> None:
+        # Apply SSL toggle immediately via env var so running session picks it up
+        if self.disable_ssl_var.get():
+            os.environ["IPASIDELOADER_DISABLE_SSL_VERIFY"] = "1"
+        else:
+            os.environ.pop("IPASIDELOADER_DISABLE_SSL_VERIFY", None)
+
         self.settings.update({
             "apple_id":            self.apple_id_var.get().strip()
                                    if self.remember_apple_var.get() else "",
@@ -864,6 +881,7 @@ class SettingsTab(ttk.Frame):
             "log_to_file":         self.log_to_file_var.get(),
             "remember_apple_id":   self.remember_apple_var.get(),
             "request_timeout":     int(self.timeout_var.get() or 20),
+            "disable_ssl_verify":  self.disable_ssl_var.get(),
         })
         self.on_save(self.settings)
 
@@ -892,6 +910,9 @@ class MainWindow(tk.Tk):
         apply_theme(self)
 
         settings = load_settings()
+        # Apply SSL setting from saved preferences immediately on startup
+        if settings.get("disable_ssl_verify"):
+            os.environ["IPASIDELOADER_DISABLE_SSL_VERIFY"] = "1"
 
         notebook = ttk.Notebook(self)
         notebook.pack(fill="both", expand=True, padx=0, pady=0)

@@ -928,6 +928,13 @@ class MainWindow(tk.Tk):
 
 
 def main() -> None:
+    # Show WARNING+ logs in the GUI log panel via a custom handler
+    import logging
+    class _GUILogHandler(logging.Handler):
+        def __init__(self): super().__init__()
+        def emit(self, record):
+            pass  # will be replaced after app starts
+    logging.basicConfig(level=logging.WARNING)
     app = MainWindow()
     app.mainloop()
 

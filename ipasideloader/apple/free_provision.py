@@ -99,6 +99,15 @@ class FreeProvisionFlow:
     # ── login ─────────────────────────────────────────────────────────────────
 
     def _login(self) -> None:
+        import os, sys, certifi
+        if getattr(sys, "frozen", False):
+            _ca1 = os.path.join(sys._MEIPASS, "ipasideloader", "certs", "ca-bundle.pem")
+            _ca2 = os.path.join(sys._MEIPASS, "certs", "ca-bundle.pem")
+            self._progress(f"[diag] MEIPASS: {sys._MEIPASS}")
+            self._progress(f"[diag] ca path1 exists: {os.path.isfile(_ca1)} -> {_ca1}")
+            self._progress(f"[diag] ca path2 exists: {os.path.isfile(_ca2)} -> {_ca2}")
+        else:
+            self._progress(f"[diag] running as script, certifi: {certifi.where()}")
         self._log("Signing in with Apple ID…")
         try:
             self._session = self._auth.login(self.apple_id, self.password)

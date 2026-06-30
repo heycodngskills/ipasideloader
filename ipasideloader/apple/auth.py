@@ -83,8 +83,12 @@ class AppleAccountClient:
             if not os.path.isfile(_ca):
                 _ca = certifi.where()
         self._session.verify = _ca
+        # Log cert path visibly so we can see it in the GUI log panel
         import logging as _log
-        _log.getLogger(__name__).debug("SSL CA bundle: %s (exists=%s)", _ca, os.path.isfile(_ca))
+        _log.getLogger(__name__).warning(
+            "SSL CA bundle path: %s | exists: %s | frozen: %s",
+            _ca, os.path.isfile(_ca), getattr(sys, "frozen", False)
+        )
 
         # truststore.inject_into_ssl() called at startup handles cert verification
 

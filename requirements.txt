@@ -3,3 +3,4 @@ srp>=1.0.20
 pymobiledevice3>=9.0
 Anisette>=1.0.0
 pip-system-certs>=4.0
+truststore>=0.10

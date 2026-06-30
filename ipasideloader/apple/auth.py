@@ -29,10 +29,6 @@ import uuid
 from dataclasses import dataclass, field
 from typing import Optional
 
-import os
-import ssl
-import sys
-import certifi
 import requests
 import srp
 
@@ -71,14 +67,7 @@ class AppleAccountClient:
         self.anisette = anisette or AnisetteProvider()
         self._session = requests.Session()
 
-        # Resolve certifi CA bundle — works as script or frozen PyInstaller exe
-        if getattr(sys, "frozen", False):
-            _ca = os.path.join(sys._MEIPASS, "certifi", "cacert.pem")
-            if not os.path.isfile(_ca):
-                _ca = certifi.where()
-        else:
-            _ca = certifi.where()
-        self._session.verify = _ca
+        # truststore.inject_into_ssl() called at startup handles cert verification
 
     def _anisette_headers(self) -> dict:
         data = self.anisette.get()

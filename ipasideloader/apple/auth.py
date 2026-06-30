@@ -29,6 +29,10 @@ import uuid
 from dataclasses import dataclass, field
 from typing import Optional
 
+import os
+import ssl
+import sys
+import certifi
 import requests
 import srp
 
@@ -66,6 +70,17 @@ class AppleAccountClient:
     def __init__(self, anisette: Optional[AnisetteProvider] = None):
         self.anisette = anisette or AnisetteProvider()
         self._session = requests.Session()
+        # Resolve the CA bundle path — works both as a script and frozen PyInstaller exe.
+        # When frozen on Windows, sys._MEIPASS points to the temp extraction dir;
+        # certifi's cacert.pem is extracted there by PyInstaller's hook-certifi.
+        if getattr(sys, "frozen", False):
+            _ca = os.path.join(sys._MEIPASS, "certifi", "cacert.pem")
+            if not os.path.isfile(_ca):
+                # Fallback: let certifi find it itself (works if collected correctly)
+                _ca = certifi.where()
+        else:
+            _ca = certifi.where()
+        self._session.verify = _ca
 
     def _anisette_headers(self) -> dict:
         data = self.anisette.get()

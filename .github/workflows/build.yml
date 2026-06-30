@@ -136,6 +136,7 @@ jobs:
             --hidden-import=certifi \
             --collect-all pymobiledevice3 \
             --collect-all Anisette \
+            --collect-data certifi \
             --runtime-hook=hooks/hook_ssl_certs.py \
             run_cli.py
 
@@ -157,6 +158,7 @@ jobs:
             --hidden-import=certifi `
             --collect-all pymobiledevice3 `
             --collect-all Anisette `
+            --collect-data certifi `
             --runtime-hook=hooks/hook_ssl_certs.py `
             run_cli.py
 
@@ -181,6 +183,7 @@ jobs:
             --hidden-import=certifi \
             --collect-all pymobiledevice3 \
             --collect-all Anisette \
+            --collect-data certifi \
             --runtime-hook=hooks/hook_ssl_certs.py \
             run_gui.py
 
@@ -205,6 +208,7 @@ jobs:
             --hidden-import=certifi `
             --collect-all pymobiledevice3 `
             --collect-all Anisette `
+            --collect-data certifi `
             --runtime-hook=hooks/hook_ssl_certs.py `
             run_gui.py
 

@@ -171,7 +171,7 @@ jobs:
         if: matrix.platform == 'linux'
         shell: bash
         run: |
-          pyinstaller --onefile --name ipasideloader-gui \
+          pyinstaller --onefile --windowed --name ipasideloader-gui \
             --hidden-import=tkinter \
             --hidden-import=tkinter.ttk \
             --hidden-import=tkinter.messagebox \
@@ -198,7 +198,7 @@ jobs:
         if: matrix.platform == 'windows'
         shell: pwsh
         run: |
-          pyinstaller --onefile --name ipasideloader-gui `
+          pyinstaller --onefile --windowed --name ipasideloader-gui `
             --hidden-import=tkinter `
             --hidden-import=tkinter.ttk `
             --hidden-import=tkinter.messagebox `

@@ -365,20 +365,28 @@ class AppleIdTab(ttk.Frame):
             self.save_ipa_var.set(p)
 
     def _refresh_devices(self) -> None:
-        try:
-            self._devices = asyncio.run(list_connected_devices())
-        except Exception:
-            self._devices = []
-
-        if self._devices:
-            vals = [f"{d.udid}  ({d.connection_type})" for d in self._devices]
-            self.device_combo["values"] = vals
-            self.device_combo.current(0)
-            self._dev_dot.set_color(SUCCESS)
-        else:
-            self.device_combo["values"] = ["No device found"]
-            self.device_var.set("No device found")
-            self._dev_dot.set_color(ERROR)
+        import threading
+        def _run():
+            try:
+                import asyncio
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+                devices = loop.run_until_complete(list_connected_devices())
+                loop.close()
+            except Exception as e:
+                logger.warning("Device detection failed: %s", e)
+                devices = []
+            self._devices = devices
+            if devices:
+                vals = [f"{d.udid}  ({d.connection_type})" for d in devices]
+                self.after(0, lambda: self.device_combo.configure(values=vals))
+                self.after(0, lambda: self.device_combo.current(0))
+                self.after(0, lambda: self._dev_dot.set_color(SUCCESS))
+            else:
+                self.after(0, lambda: self.device_combo.configure(values=["No device found"]))
+                self.after(0, lambda: self.device_var.set("No device found"))
+                self.after(0, lambda: self._dev_dot.set_color(ERROR))
+        threading.Thread(target=_run, daemon=True).start()
 
     def _log(self, msg: str) -> None:
         if msg.startswith("  File ") or msg.startswith("Traceback") or \
@@ -742,21 +750,36 @@ class DevicesTab(ttk.Frame):
 
     def _refresh(self) -> None:
         self.listbox.delete(0, "end")
-        try:
-            devices = asyncio.run(list_connected_devices())
-        except Exception as e:
-            self.listbox.insert("end", f"  Error: {e}")
-            self._status.configure(text="Could not query devices", foreground=ERROR)
-            return
-        if not devices:
-            self.listbox.insert("end", "  No devices found — plug in your iPhone/iPad")
-            self._status.configure(text="0 devices", foreground=FG2)
-        else:
-            for d in devices:
-                self.listbox.insert("end", f"  {d.udid}    {d.connection_type}")
-            self._status.configure(
-                text=f"{len(devices)} device{'s' if len(devices) != 1 else ''} found",
-                foreground=SUCCESS)
+        self.listbox.insert("end", "  Scanning...")
+        self._status.configure(text="Scanning...", foreground=FG2)
+        import threading
+        def _run():
+            try:
+                import asyncio
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+                devices = loop.run_until_complete(list_connected_devices())
+                loop.close()
+            except Exception as e:
+                self.after(0, lambda: self.listbox.delete(0, "end"))
+                self.after(0, lambda: self.listbox.insert("end", f"  Error: {e}"))
+                self.after(0, lambda: self._status.configure(
+                    text="Could not query devices", foreground=ERROR))
+                return
+            self.after(0, lambda: self.listbox.delete(0, "end"))
+            if not devices:
+                self.after(0, lambda: self.listbox.insert(
+                    "end", "  No devices found — plug in your iPhone/iPad"))
+                self.after(0, lambda: self._status.configure(
+                    text="0 devices", foreground=FG2))
+            else:
+                for d in devices:
+                    self.after(0, lambda d=d: self.listbox.insert(
+                        "end", f"  {d.udid}    {d.connection_type}"))
+                self.after(0, lambda: self._status.configure(
+                    text=f"{len(devices)} device{"s" if len(devices) != 1 else ""} found",
+                    foreground=SUCCESS))
+        threading.Thread(target=_run, daemon=True).start()
 
 
 # ── Settings Tab ───────────────────────────────────────────────────────────────

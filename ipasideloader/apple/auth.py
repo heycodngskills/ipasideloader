@@ -32,11 +32,9 @@ from typing import Optional
 import os
 import ssl
 import sys
-import warnings
 import certifi
 import requests
 import srp
-import urllib3
 
 from ..anisette.provider import AnisetteProvider
 from ..errors import AppleAuthError
@@ -73,22 +71,14 @@ class AppleAccountClient:
         self.anisette = anisette or AnisetteProvider()
         self._session = requests.Session()
 
-        # Allow SSL verification to be disabled via env var (user-controlled setting).
-        # This is needed when Windows has something intercepting HTTPS (ISP, router,
-        # certain network configs) that injects a self-signed cert into the chain.
-        if os.environ.get("IPASIDELOADER_DISABLE_SSL_VERIFY") == "1":
-            self._session.verify = False
-            warnings.filterwarnings("ignore", message="Unverified HTTPS request")
-            urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
-        else:
-            # Resolve certifi CA bundle — works as script or frozen PyInstaller exe
-            if getattr(sys, "frozen", False):
-                _ca = os.path.join(sys._MEIPASS, "certifi", "cacert.pem")
-                if not os.path.isfile(_ca):
-                    _ca = certifi.where()
-            else:
+        # Resolve certifi CA bundle — works as script or frozen PyInstaller exe
+        if getattr(sys, "frozen", False):
+            _ca = os.path.join(sys._MEIPASS, "certifi", "cacert.pem")
+            if not os.path.isfile(_ca):
                 _ca = certifi.where()
-            self._session.verify = _ca
+        else:
+            _ca = certifi.where()
+        self._session.verify = _ca
 
     def _anisette_headers(self) -> dict:
         data = self.anisette.get()

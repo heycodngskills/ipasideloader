@@ -135,7 +135,6 @@ jobs:
             --hidden-import=srp \
             --hidden-import=certifi \
             --hidden-import=truststore \
-            --hidden-import=truststore \
             --collect-all pymobiledevice3 \
             --collect-all Anisette \
             --collect-data certifi \
@@ -158,7 +157,6 @@ jobs:
             --hidden-import=Anisette `
             --hidden-import=srp `
             --hidden-import=certifi `
-            --hidden-import=truststore `
             --hidden-import=truststore `
             --collect-all pymobiledevice3 `
             --collect-all Anisette `
@@ -186,7 +184,6 @@ jobs:
             --hidden-import=srp \
             --hidden-import=certifi \
             --hidden-import=truststore \
-            --hidden-import=truststore \
             --collect-all pymobiledevice3 \
             --collect-all Anisette \
             --collect-data certifi \
@@ -212,7 +209,6 @@ jobs:
             --hidden-import=Anisette `
             --hidden-import=srp `
             --hidden-import=certifi `
-            --hidden-import=truststore `
             --hidden-import=truststore `
             --collect-all pymobiledevice3 `
             --collect-all Anisette `

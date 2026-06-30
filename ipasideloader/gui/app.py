@@ -770,7 +770,9 @@ class SettingsTab(ttk.Frame):
         self.columnconfigure(0, weight=1)
 
         self.apple_id_var        = tk.StringVar(value=settings.get("apple_id", ""))
-        self.anisette_url_var    = tk.StringVar(value=settings.get("custom_anisette_url", ""))
+        from ..config import DEFAULT_ANISETTE_SERVER
+        self.anisette_url_var    = tk.StringVar(
+            value=settings.get("custom_anisette_url", DEFAULT_ANISETTE_SERVER))
         self.zsign_path_var      = tk.StringVar(value=settings.get("zsign_path", ""))
         self.ldid_path_var       = tk.StringVar(value=settings.get("ldid_path", ""))
         self.log_level_var       = tk.StringVar(value=settings.get("log_level", "INFO"))
@@ -796,7 +798,7 @@ class SettingsTab(ttk.Frame):
         ani.grid(row=4, column=0, sticky="we", pady=(0, 12))
         ani.columnconfigure(1, weight=1)
         self._field(ani, "Custom Anisette Server URL", self.anisette_url_var, 0,
-                    placeholder="https://ani.example.com  (leave blank for auto)")
+                    placeholder="https://your-anisette-server.com")
 
         self._section("Signing Tools", 5)
         tools = Card(self)

@@ -42,7 +42,12 @@ FREE_TEAM_APP_ID_LIMIT = 10
 # Default public anisette servers to try, in order, before giving up.
 # These mirror the public servers AltServer/SideStore-style tooling has
 # historically published. Users can prepend their own via settings.
+# Primary anisette server — used first before any fallbacks.
+# Users can override this in Settings with their own server.
+DEFAULT_ANISETTE_SERVER = "https://anisette-v3-server-latest-zmst.onrender.com"
+
 DEFAULT_PUBLIC_ANISETTE_SERVERS = [
+    DEFAULT_ANISETTE_SERVER,
     "https://ani.sidestore.io",
     "https://sign.rheaime.dev",
 ]

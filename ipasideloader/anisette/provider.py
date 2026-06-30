@@ -59,7 +59,9 @@ class AnisetteProvider:
         public_servers: Optional[list[str]] = None,
         timeout: float = 8.0,
     ):
-        self.custom_url = custom_url.rstrip("/") if custom_url else None
+        # Use the default server if no custom URL provided
+        _url = custom_url or DEFAULT_ANISETTE_SERVER
+        self.custom_url = _url.rstrip("/") if _url else None
         self.public_servers = public_servers or DEFAULT_PUBLIC_ANISETTE_SERVERS
         self.timeout = timeout
         self._resolved_remote_url: Optional[str] = None

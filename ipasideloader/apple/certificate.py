@@ -48,9 +48,10 @@ def _cache_path(apple_id: str, team_id: str) -> Path:
 
 def save_cert_bundle(bundle: CertBundle, team_id: str) -> None:
     path = _cache_path(bundle.apple_id, team_id)
+    # p12_password is the hardcoded internal constant, not the user's Apple ID
+    # password. We don't need to persist it — reconstruct on load.
     path.write_text(json.dumps({
         "p12_b64": base64.b64encode(bundle.p12_bytes).decode(),
-        "p12_password": bundle.p12_password.decode(),
         "cert_id": bundle.cert_id,
         "apple_id": bundle.apple_id,
     }))
@@ -65,7 +66,7 @@ def load_cert_bundle(apple_id: str, team_id: str) -> Optional[CertBundle]:
         data = json.loads(path.read_text())
         return CertBundle(
             p12_bytes=base64.b64decode(data["p12_b64"]),
-            p12_password=data["p12_password"].encode(),
+            p12_password=b"ipasideloader",  # hardcoded constant, never user data
             cert_id=data["cert_id"],
             apple_id=data["apple_id"],
         )

@@ -16,7 +16,11 @@ from typing import Callable, Optional
 
 from .config import WORK_DIR
 from .device.manager import DeviceSession
+import logging
+import traceback
 from .errors import SideloaderError
+
+logger = logging.getLogger(__name__)
 from .ipa_archive import cleanup, extract_ipa, read_app_name, read_bundle_id, repack_ipa
 from .signing.base import SigningRequest
 from .signing.manager import BackendName, SigningManager
@@ -99,7 +103,18 @@ async def run_sideload(
     except SideloaderError:
         raise
     except Exception as e:
-        raise SideloaderError(f"Unexpected error during sideload: {e}") from e
+        # Log full traceback so the GUI log panel shows exactly what failed
+        tb = traceback.format_exc()
+        logger.error("Sideload failed:\n%s", tb)
+        if on_progress:
+            on_progress(f"--- Traceback ---")
+            for line in tb.strip().splitlines():
+                on_progress(line)
+            on_progress(f"--- End Traceback ---")
+        raise SideloaderError(
+            f"{type(e).__name__}: {e}\n\n"
+            f"Full traceback logged above in the log panel."
+        ) from e
     finally:
         cleanup(extract_dir)
 
@@ -191,6 +206,17 @@ async def run_sideload_apple_id(
     except SideloaderError:
         raise
     except Exception as e:
-        raise SideloaderError(f"Unexpected error during sideload: {e}") from e
+        # Log full traceback so the GUI log panel shows exactly what failed
+        tb = traceback.format_exc()
+        logger.error("Sideload failed:\n%s", tb)
+        if on_progress:
+            on_progress(f"--- Traceback ---")
+            for line in tb.strip().splitlines():
+                on_progress(line)
+            on_progress(f"--- End Traceback ---")
+        raise SideloaderError(
+            f"{type(e).__name__}: {e}\n\n"
+            f"Full traceback logged above in the log panel."
+        ) from e
     finally:
         cleanup(extract_dir)

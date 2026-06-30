@@ -204,6 +204,7 @@ class LogBox(tk.Text):
         self.tag_configure("err",   foreground=ERROR)
         self.tag_configure("warn",  foreground=WARN)
         self.tag_configure("muted", foreground=FG2)
+        self.tag_configure("trace", foreground="#e06c75", font=FONT_MONO)
 
     def append(self, msg: str, tag: str = "") -> None:
         self.config(state="normal")
@@ -380,8 +381,15 @@ class AppleIdTab(ttk.Frame):
             self._dev_dot.set_color(ERROR)
 
     def _log(self, msg: str) -> None:
-        tag = "ok" if msg.startswith("Done") or "success" in msg.lower() else \
-              "err" if "error" in msg.lower() or "fail" in msg.lower() else ""
+        if msg.startswith("  File ") or msg.startswith("Traceback") or \
+                msg.startswith("--- Traceback") or "Error:" in msg:
+            tag = "trace"
+        elif msg.startswith("Done") or "success" in msg.lower() or msg.startswith("Installed"):
+            tag = "ok"
+        elif "error" in msg.lower() or "fail" in msg.lower():
+            tag = "err"
+        else:
+            tag = ""
         self.after(0, self.logbox.append, msg, tag)
 
     def _set_status(self, msg: str, color: str = FG2) -> None:
@@ -629,8 +637,15 @@ class CertTab(ttk.Frame):
             self.identity_var.set(ids[0])
 
     def _log(self, msg: str) -> None:
-        tag = "ok" if "success" in msg.lower() or msg.startswith("Done") else \
-              "err" if "error" in msg.lower() or "fail" in msg.lower() else ""
+        if msg.startswith("  File ") or msg.startswith("Traceback") or \
+                msg.startswith("--- Traceback") or "Error:" in msg:
+            tag = "trace"
+        elif "success" in msg.lower() or msg.startswith("Done") or msg.startswith("Installed"):
+            tag = "ok"
+        elif "error" in msg.lower() or "fail" in msg.lower():
+            tag = "err"
+        else:
+            tag = ""
         self.after(0, self.logbox.append, msg, tag)
 
     def _set_status(self, msg, color=FG2):

@@ -32,7 +32,7 @@ from typing import Optional
 
 import requests
 
-from ..config import DEFAULT_PUBLIC_ANISETTE_SERVERS
+from ..config import DEFAULT_ANISETTE_SERVER, DEFAULT_PUBLIC_ANISETTE_SERVERS
 from ..errors import AnisetteError
 
 logger = logging.getLogger(__name__)

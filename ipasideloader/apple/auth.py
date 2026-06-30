@@ -68,29 +68,27 @@ class AppleAccountClient:
 
     def __init__(self, anisette: Optional[AnisetteProvider] = None):
         self.anisette = anisette or AnisetteProvider()
-        self._session = requests.Session()
-        # Use our bundled CA file (certifi + Apple Root CA).
-        # Apple's GSA uses Apple's own private PKI, not in certifi or Windows cert store.
-        if getattr(sys, "frozen", False):
-            _ca = os.path.join(sys._MEIPASS, "ipasideloader", "certs", "ca-bundle.pem")
-            if not os.path.isfile(_ca):
-                # Try alternate path
-                _ca = os.path.join(sys._MEIPASS, "certs", "ca-bundle.pem")
-            if not os.path.isfile(_ca):
-                _ca = certifi.where()
-        else:
-            _ca = os.path.normpath(os.path.join(os.path.dirname(__file__), "..", "certs", "ca-bundle.pem"))
-            if not os.path.isfile(_ca):
-                _ca = certifi.where()
-        self._session.verify = _ca
-        # Log cert path visibly so we can see it in the GUI log panel
-        import logging as _log
-        _log.getLogger(__name__).warning(
-            "SSL CA bundle path: %s | exists: %s | frozen: %s",
-            _ca, os.path.isfile(_ca), getattr(sys, "frozen", False)
-        )
 
-        # truststore.inject_into_ssl() called at startup handles cert verification
+        # Resolve Apple Root CA path — same approach as the anisette library.
+        # anisette uses ssl.create_default_context(cafile=apple_root) which works
+        # because it lets the OS fill in intermediates while we supply the root.
+        if getattr(sys, "frozen", False):
+            _apple_root = os.path.join(sys._MEIPASS, "ipasideloader", "certs", "apple-root.pem")
+            if not os.path.isfile(_apple_root):
+                _apple_root = os.path.join(sys._MEIPASS, "certs", "apple-root.pem")
+        else:
+            _apple_root = os.path.normpath(
+                os.path.join(os.path.dirname(__file__), "..", "certs", "apple-root.pem")
+            )
+
+        if os.path.isfile(_apple_root):
+            self._session = requests.Session()
+            self._session.verify = _apple_root
+            logger.debug("Using Apple root CA: %s", _apple_root)
+        else:
+            self._session = requests.Session()
+            self._session.verify = certifi.where()
+            logger.warning("Apple root CA not found at %s, falling back to certifi", _apple_root)
 
     def _anisette_headers(self) -> dict:
         data = self.anisette.get()

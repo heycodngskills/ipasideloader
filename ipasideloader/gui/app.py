@@ -341,6 +341,9 @@ class AppleIdTab(ttk.Frame):
         ttk.Label(log_hdr, text="Log", style="Muted.TLabel").pack(side="left")
         ttk.Button(log_hdr, text="Clear", command=lambda: self.logbox.clear()).pack(side="right")
         self.logbox = LogBox(log_card, height=9)
+        # Show SSL fix status on startup
+        _fix = __import__("os").environ.get("_IPASIDELOADER_SSL_FIX", "not set")
+        self.logbox.append(f"SSL fix: {_fix}", "muted")
         self.logbox.grid(row=1, column=0, sticky="nswe")
         sb = ttk.Scrollbar(log_card, command=self.logbox.yview)
         sb.grid(row=1, column=1, sticky="ns")

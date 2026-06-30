@@ -660,6 +660,20 @@ class CertTab(ttk.Frame):
                                   "Choose both an IPA file and a provisioning profile.")
             return
 
+        # Validate bundle ID format if provided
+        bundle_id = self.bundle_id_var.get().strip()
+        if bundle_id:
+            import re
+            if not re.match(r'^[A-Za-z0-9]+(?:\.[A-Za-z0-9-]+){1,}$', bundle_id):
+                messagebox.showerror(
+                    "Invalid Bundle ID",
+                    f"\"{bundle_id}\" is not a valid bundle ID.\n\n"
+                    "Must be in reverse-domain format, e.g.:\n"
+                    "  com.example.myapp\n"
+                    "  com.yourname.youtube"
+                )
+                return
+
         backend = None if self.backend_var.get() == "auto" else self.backend_var.get()
         options = SideloadOptions(
             ipa_path=Path(self.ipa_path_var.get()),

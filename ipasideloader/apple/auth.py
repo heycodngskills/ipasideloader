@@ -29,6 +29,9 @@ import uuid
 from dataclasses import dataclass, field
 from typing import Optional
 
+import certifi
+import os
+import sys
 import requests
 import srp
 
@@ -66,6 +69,22 @@ class AppleAccountClient:
     def __init__(self, anisette: Optional[AnisetteProvider] = None):
         self.anisette = anisette or AnisetteProvider()
         self._session = requests.Session()
+        # Use our bundled CA file (certifi + Apple Root CA).
+        # Apple's GSA uses Apple's own private PKI, not in certifi or Windows cert store.
+        if getattr(sys, "frozen", False):
+            _ca = os.path.join(sys._MEIPASS, "ipasideloader", "certs", "ca-bundle.pem")
+            if not os.path.isfile(_ca):
+                # Try alternate path
+                _ca = os.path.join(sys._MEIPASS, "certs", "ca-bundle.pem")
+            if not os.path.isfile(_ca):
+                _ca = certifi.where()
+        else:
+            _ca = os.path.normpath(os.path.join(os.path.dirname(__file__), "..", "certs", "ca-bundle.pem"))
+            if not os.path.isfile(_ca):
+                _ca = certifi.where()
+        self._session.verify = _ca
+        import logging as _log
+        _log.getLogger(__name__).debug("SSL CA bundle: %s (exists=%s)", _ca, os.path.isfile(_ca))
 
         # truststore.inject_into_ssl() called at startup handles cert verification
 

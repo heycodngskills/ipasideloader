@@ -70,6 +70,14 @@ jobs:
           pip install -r requirements.txt
           pip install pyinstaller
 
+      - name: Verify tkinter is importable (required for GUI build)
+        shell: bash
+        run: |
+          python -c "import tkinter; print('tkinter OK:', tkinter.TkVersion)" || \
+            (echo '::error::tkinter is not importable — the GUI package will silently
+            fail to bundle in PyInstaller. On Linux this means python3-tk is missing.' \
+            && exit 1)
+
       # ── zsign (Linux) — Makefile lives in build/linux/ ────────────────────────
       - name: Build zsign (Linux)
         if: matrix.platform == 'linux'
@@ -77,7 +85,7 @@ jobs:
         shell: bash
         run: |
           sudo apt-get update -q
-          sudo apt-get install -y build-essential libssl-dev pkg-config zlib1g-dev
+          sudo apt-get install -y build-essential libssl-dev pkg-config zlib1g-dev python3-tk
           git clone --depth 1 https://github.com/zhlynn/zsign.git /tmp/zsign
           cd /tmp/zsign/build/linux
           make

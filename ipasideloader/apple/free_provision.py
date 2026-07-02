@@ -129,7 +129,7 @@ class FreeProvisionFlow:
                     self._progress(f"[diag-chain] subject={_subj} | issuer={_iss} | self-signed={_subj == _iss}")
                 _conn.close()
             except Exception as _e:
-                self._progress(f"[diag-chain] failed: {_e}")
+                self._progress(f"[diag-chain] failed: type={type(_e).__name__} args={_e.args!r} repr={_e!r}")
         else:
             self._progress(f"[diag] running as script, certifi: {certifi.where()}")
         self._log("Signing in with Apple ID…")

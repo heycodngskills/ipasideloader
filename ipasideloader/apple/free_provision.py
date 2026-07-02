@@ -122,7 +122,12 @@ class FreeProvisionFlow:
                 _conn = SSL.Connection(_ctx, _sock)
                 _conn.set_tlsext_host_name(b"gsa.apple.com")
                 _conn.set_connect_state()
-                _conn.do_handshake()
+                while True:
+                    try:
+                        _conn.do_handshake()
+                        break
+                    except SSL.WantReadError:
+                        continue
                 for _c in _conn.get_peer_cert_chain():
                     _subj = _c.get_subject().CN
                     _iss = _c.get_issuer().CN

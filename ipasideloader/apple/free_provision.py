@@ -131,7 +131,8 @@ class FreeProvisionFlow:
                 for _c in _conn.get_peer_cert_chain():
                     _subj = _c.get_subject().CN
                     _iss = _c.get_issuer().CN
-                    self._progress(f"[diag-chain] subject={_subj} | issuer={_iss} | self-signed={_subj == _iss}")
+                    _fp = _c.digest("sha256").decode()
+                    self._progress(f"[diag-chain] subject={_subj} | issuer={_iss} | self-signed={_subj == _iss} | sha256={_fp}")
                 _conn.close()
             except Exception as _e:
                 self._progress(f"[diag-chain] failed: type={type(_e).__name__} args={_e.args!r} repr={_e!r}")

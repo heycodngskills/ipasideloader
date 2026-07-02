@@ -69,6 +69,7 @@ jobs:
           pip install --upgrade pip
           pip install -r requirements.txt
           pip install pyinstaller
+          pip install -e .
 
       - name: Verify tkinter is importable (required for GUI build)
         shell: bash

@@ -32,6 +32,7 @@ from typing import Optional
 import certifi
 import os
 import sys
+import tempfile
 import requests
 import srp
 
@@ -41,6 +42,46 @@ from ..errors import AppleAuthError
 logger = logging.getLogger(__name__)
 
 GSA_ENDPOINT = "https://gsa.apple.com/grandslam/GsService2"
+
+
+def _build_ca_bundle() -> str:
+    """
+    Merge certifi's standard CA bundle with the bundled apple-root.pem so
+    that requests can verify both standard TLS chains (e.g. DigiCert-rooted
+    gsa.apple.com) and Apple-specific chains.  Returns a path to a temporary
+    merged PEM file, or certifi's bundle alone as a fallback.
+    """
+    if getattr(sys, "frozen", False):
+        _apple_root = os.path.join(sys._MEIPASS, "ipasideloader", "certs", "apple-root.pem")
+        if not os.path.isfile(_apple_root):
+            _apple_root = os.path.join(sys._MEIPASS, "certs", "apple-root.pem")
+    else:
+        _apple_root = os.path.normpath(
+            os.path.join(os.path.dirname(__file__), "..", "certs", "apple-root.pem")
+        )
+
+    if not os.path.isfile(_apple_root):
+        logger.warning("apple-root.pem not found, using certifi bundle only")
+        return certifi.where()
+
+    try:
+        with open(certifi.where(), "rb") as f:
+            certifi_data = f.read()
+        with open(_apple_root, "rb") as f:
+            apple_data = f.read()
+        tmp = tempfile.NamedTemporaryFile(
+            mode="wb", suffix=".pem", prefix="ipasideloader_ca_", delete=False
+        )
+        tmp.write(certifi_data)
+        if not certifi_data.endswith(b"\n"):
+            tmp.write(b"\n")
+        tmp.write(apple_data)
+        tmp.close()
+        logger.debug("Merged CA bundle written to %s", tmp.name)
+        return tmp.name
+    except Exception as exc:
+        logger.warning("Failed to build merged CA bundle (%s), using certifi", exc)
+        return certifi.where()
 # NOTE: we deliberately do NOT hardcode our own SRP "N"/"g" group constants
 # here. The `srp` library already ships the standard RFC 5054 2048-bit
 # group via `srp.NG_2048`, which is what GSA uses, so we just reference
@@ -68,27 +109,8 @@ class AppleAccountClient:
 
     def __init__(self, anisette: Optional[AnisetteProvider] = None):
         self.anisette = anisette or AnisetteProvider()
-
-        # Resolve Apple Root CA path — same approach as the anisette library.
-        # anisette uses ssl.create_default_context(cafile=apple_root) which works
-        # because it lets the OS fill in intermediates while we supply the root.
-        if getattr(sys, "frozen", False):
-            _apple_root = os.path.join(sys._MEIPASS, "ipasideloader", "certs", "apple-root.pem")
-            if not os.path.isfile(_apple_root):
-                _apple_root = os.path.join(sys._MEIPASS, "certs", "apple-root.pem")
-        else:
-            _apple_root = os.path.normpath(
-                os.path.join(os.path.dirname(__file__), "..", "certs", "apple-root.pem")
-            )
-
-        if os.path.isfile(_apple_root):
-            self._session = requests.Session()
-            self._session.verify = _apple_root
-            logger.debug("Using Apple root CA: %s", _apple_root)
-        else:
-            self._session = requests.Session()
-            self._session.verify = certifi.where()
-            logger.warning("Apple root CA not found at %s, falling back to certifi", _apple_root)
+        self._session = requests.Session()
+        self._session.verify = _build_ca_bundle()
 
     def _anisette_headers(self) -> dict:
         data = self.anisette.get()

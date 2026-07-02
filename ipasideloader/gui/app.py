@@ -420,11 +420,18 @@ class AppleIdTab(ttk.Frame):
             messagebox.showerror("Missing IPA", "Choose an IPA file.")
             return
 
+        # If device list is stale (e.g. phone connected after app launched),
+        # do a fresh scan before starting rather than silently passing None.
+        if not self._devices:
+            self._set_status("Scanning for device…", WARN)
+            self._refresh_devices()
+            self.after(3000, self._on_run_after_scan)
+            return
+
         device_udid: Optional[str] = None
-        if self._devices:
-            idx = self.device_combo.current()
-            if idx >= 0:
-                device_udid = self._devices[idx].udid
+        idx = self.device_combo.current()
+        if idx >= 0:
+            device_udid = self._devices[idx].udid
 
         save_ipa = Path(self.save_ipa_var.get()) if self.save_ipa_var.get().strip() else None
 
@@ -441,6 +448,19 @@ class AppleIdTab(ttk.Frame):
             args=(apple_id, password, Path(ipa), device_udid, save_ipa),
             daemon=True,
         ).start()
+
+    def _on_run_after_scan(self) -> None:
+        """Retry Sign & Install 3 s after a triggered device scan."""
+        if not self._devices:
+            messagebox.showerror(
+                "No Device Found",
+                "No iPhone/iPad detected.
+
+Plug it in over USB and tap 'Trust' on your device if prompted, then try again.",
+            )
+            self._set_status("No device found", ERROR)
+            return
+        self._on_run()
 
     def _ask_two_factor(self) -> str:
         result: list[str] = []

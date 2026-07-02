@@ -17,11 +17,32 @@ import uuid
 from dataclasses import dataclass
 from typing import Optional
 
+import os
+import sys
+
+import certifi
 import requests
 
 from .auth import AppleSession
 from ..config import FREE_TEAM_APP_ID_LIMIT
 from ..errors import ProvisioningError
+
+
+def _resolve_ca() -> str:
+    """Return the best CA bundle path for Apple endpoints."""
+    if getattr(sys, "frozen", False):
+        _root = os.path.join(sys._MEIPASS, "ipasideloader", "certs", "apple-root.pem")
+        if not os.path.isfile(_root):
+            _root = os.path.join(sys._MEIPASS, "certs", "apple-root.pem")
+        if os.path.isfile(_root):
+            return _root
+    else:
+        _root = os.path.normpath(
+            os.path.join(os.path.dirname(__file__), "..", "certs", "apple-root.pem")
+        )
+        if os.path.isfile(_root):
+            return _root
+    return certifi.where()
 
 logger = logging.getLogger(__name__)
 
@@ -52,6 +73,7 @@ class DeveloperServicesClient:
         self.apple_session = session
         self.anisette_headers = anisette_headers or {}
         self._http = requests.Session()
+        self._http.verify = _resolve_ca()
 
     def _base_params(self) -> dict:
         return {

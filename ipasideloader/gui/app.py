@@ -777,7 +777,7 @@ class DevicesTab(ttk.Frame):
                     self.after(0, lambda d=d: self.listbox.insert(
                         "end", f"  {d.udid}    {d.connection_type}"))
                 self.after(0, lambda: self._status.configure(
-                    text=f"{len(devices)} device{"s" if len(devices) != 1 else ""} found",
+                    text=f"{len(devices)} device{'s' if len(devices) != 1 else ''} found",
                     foreground=SUCCESS))
         threading.Thread(target=_run, daemon=True).start()
 

@@ -113,6 +113,23 @@ class FreeProvisionFlow:
                 with open(_root_path, "r") as f:
                     _count = f.read().count("BEGIN CERTIFICATE")
             self._progress(f"[diag] apple-root.pem exists: {_exists}, cert count: {_count}, path: {_root_path}")
+            try:
+                from OpenSSL import SSL
+                import socket as _socket
+                _ctx = SSL.Context(SSL.TLS_METHOD)
+                _ctx.set_verify(SSL.VERIFY_NONE, lambda *a: True)
+                _sock = _socket.create_connection(("gsa.apple.com", 443), timeout=10)
+                _conn = SSL.Connection(_ctx, _sock)
+                _conn.set_tlsext_host_name(b"gsa.apple.com")
+                _conn.set_connect_state()
+                _conn.do_handshake()
+                for _c in _conn.get_peer_cert_chain():
+                    _subj = _c.get_subject().CN
+                    _iss = _c.get_issuer().CN
+                    self._progress(f"[diag-chain] subject={_subj} | issuer={_iss} | self-signed={_subj == _iss}")
+                _conn.close()
+            except Exception as _e:
+                self._progress(f"[diag-chain] failed: {_e}")
         else:
             self._progress(f"[diag] running as script, certifi: {certifi.where()}")
         self._log("Signing in with Apple ID…")

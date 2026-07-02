@@ -106,6 +106,13 @@ class FreeProvisionFlow:
             self._progress(f"[diag] MEIPASS: {sys._MEIPASS}")
             self._progress(f"[diag] ca path1 exists: {os.path.isfile(_ca1)} -> {_ca1}")
             self._progress(f"[diag] ca path2 exists: {os.path.isfile(_ca2)} -> {_ca2}")
+            _root_path = os.path.join(sys._MEIPASS, "ipasideloader", "certs", "apple-root.pem")
+            _exists = os.path.isfile(_root_path)
+            _count = 0
+            if _exists:
+                with open(_root_path, "r") as f:
+                    _count = f.read().count("BEGIN CERTIFICATE")
+            self._progress(f"[diag] apple-root.pem exists: {_exists}, cert count: {_count}, path: {_root_path}")
         else:
             self._progress(f"[diag] running as script, certifi: {certifi.where()}")
         self._log("Signing in with Apple ID…")

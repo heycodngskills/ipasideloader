@@ -460,9 +460,8 @@ class AppleIdTab(ttk.Frame):
         if not self._devices:
             messagebox.showerror(
                 "No Device Found",
-                "No iPhone/iPad detected.
-
-Plug it in over USB and tap 'Trust' on your device if prompted, then try again.",
+                "No iPhone/iPad detected.\n\n"
+                "Plug it in over USB and tap 'Trust' on your device if prompted, then try again.",
             )
             self._set_status("No device found", ERROR)
             return

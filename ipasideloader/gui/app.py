@@ -24,6 +24,7 @@ from ..device.manager import list_connected_devices
 from ..errors import SideloaderError
 from ..pipeline import SideloadOptions, run_sideload, run_sideload_apple_id
 from ..signing.manager import SigningManager
+logger = logging.getLogger(__name__)
 
 SETTINGS_PATH = CREDS_DIR / "gui_settings.json"
 
@@ -953,13 +954,14 @@ class MainWindow(tk.Tk):
 
 
 def main() -> None:
-    # Show WARNING+ logs in the GUI log panel via a custom handler
     import logging
-    class _GUILogHandler(logging.Handler):
-        def __init__(self): super().__init__()
-        def emit(self, record):
-            pass  # will be replaced after app starts
-    logging.basicConfig(level=logging.WARNING)
+    from ..config import LOG_DIR
+    log_file = LOG_DIR / ipasideloader.log
+    logging.basicConfig(
+        level=logging.WARNING,
+        filename=str(log_file),
+        filemode=a,
+    )
     app = MainWindow()
     app.mainloop()
 

@@ -118,24 +118,26 @@ class FreeProvisionFlow:
                 import socket as _socket
                 _ctx = SSL.Context(SSL.TLS_METHOD)
                 _ctx.set_verify(SSL.VERIFY_NONE, lambda *a: True)
-                _sock = _socket.create_connection(("gsa.apple.com", 443), timeout=10)
-                _conn = SSL.Connection(_ctx, _sock)
-                _conn.set_tlsext_host_name(b"gsa.apple.com")
-                _conn.set_connect_state()
-                while True:
+                for _i in range(5):
                     try:
-                        _conn.do_handshake()
-                        break
-                    except SSL.WantReadError:
-                        continue
-                for _c in _conn.get_peer_cert_chain():
-                    _subj = _c.get_subject().CN
-                    _iss = _c.get_issuer().CN
-                    _fp = _c.digest("sha256").decode()
-                    self._progress(f"[diag-chain] subject={_subj} | issuer={_iss} | self-signed={_subj == _iss} | sha256={_fp}")
-                _conn.close()
+                        _sock = _socket.create_connection(("gsa.apple.com", 443), timeout=10)
+                        _conn = SSL.Connection(_ctx, _sock)
+                        _conn.set_tlsext_host_name(b"gsa.apple.com")
+                        _conn.set_connect_state()
+                        while True:
+                            try:
+                                _conn.do_handshake()
+                                break
+                            except SSL.WantReadError:
+                                continue
+                        _root = _conn.get_peer_cert_chain()[-1]
+                        _fp = _root.digest("sha256").decode("utf-8")
+                        self._progress(f"[diag-chain-{_i}] root={_root.get_subject().CN} sha256={_fp}")
+                        _conn.close()
+                    except Exception as _e:
+                        self._progress(f"[diag-chain-{_i}] failed: {_e!r}")
             except Exception as _e:
-                self._progress(f"[diag-chain] failed: type={type(_e).__name__} args={_e.args!r} repr={_e!r}")
+                self._progress(f"[diag-chain] setup failed: type={type(_e).__name__} args={_e.args!r} repr={_e!r}")
         else:
             self._progress(f"[diag] running as script, certifi: {certifi.where()}")
         self._log("Signing in with Apple ID…")

@@ -956,11 +956,11 @@ class MainWindow(tk.Tk):
 def main() -> None:
     import logging
     from ..config import LOG_DIR
-    log_file = LOG_DIR / ipasideloader.log
+    log_file = LOG_DIR / "ipasideloader.log"
     logging.basicConfig(
         level=logging.WARNING,
         filename=str(log_file),
-        filemode=a,
+        filemode="a",
     )
     app = MainWindow()
     app.mainloop()

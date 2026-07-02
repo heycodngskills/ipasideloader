@@ -249,6 +249,7 @@ class AppleIdTab(ttk.Frame):
 
         self._build()
         self._refresh_devices()
+        self._start_device_poll()
 
     def _build(self) -> None:
         self.columnconfigure(0, weight=1)
@@ -388,6 +389,11 @@ class AppleIdTab(ttk.Frame):
                 self.after(0, lambda: self.device_var.set("No device found"))
                 self.after(0, lambda: self._dev_dot.set_color(ERROR))
         threading.Thread(target=_run, daemon=True).start()
+
+    def _start_device_poll(self) -> None:
+        """Re-scan for devices every 5 s so the combo stays live without manual Refresh."""
+        self._refresh_devices()
+        self.after(5000, self._start_device_poll)
 
     def _log(self, msg: str) -> None:
         if msg.startswith("  File ") or msg.startswith("Traceback") or \
